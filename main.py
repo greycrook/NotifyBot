@@ -1,48 +1,65 @@
 import asyncio
 import logging
-import sys
-
 from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
 
-from bot.config import BOT_TOKEN
-from bot.database import init_db
-from bot.handlers import router
-from bot.scheduler import setup_scheduler
+from config import TOKEN
+from database import init_db
+from handlers import router
+from scheduler import setup_scheduler
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
+from database import init_db, dump_db_to_console  # Обнови импорт
+from scheduler import setup_scheduler, get_time_until_next_notification  # Обнови импорт
+
+# Настраиваем логирование в консоль
+logging.basicConfig(level=logging.INFO)
 
 
-async def main() -> None:
-    if not BOT_TOKEN:
-        logger.error("Задайте BOT_TOKEN в файле .env")
-        sys.exit(1)
+async def main():
+    # Инициализируем бота и диспетчер
+    bot = Bot(token=TOKEN)
+    dp = Dispatcher()
 
-    init_db()
+    # Подключаем роутер с командами
+    dp.include_router(router)
 
-    bot = Bot(
-        token=BOT_TOKEN,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
+    # Шаг 1. Инициализируем таблицы в SQLite
+    await init_db()
+
+    # Шаг 2. Запускаем планировщик уведомлений
+    # ВАЖНО: замени -1001234567890 на РЕАЛЬНЫЙ ID твоей беседы (чата), куда бот должен слать уведомления
+    CHAT_ID = -5196307154
+    setup_scheduler(bot)
+
+    # Шаг 3. Запускаем long polling (слушаем команды)
+    print("Бот успешно запущен и готов к работе!")
+    await dp.start_polling(bot)
+
+
+async def main():
+    bot = Bot(token=TOKEN)
     dp = Dispatcher()
     dp.include_router(router)
 
-    scheduler = setup_scheduler(bot)
-    scheduler.start()
-    logger.info("Планировщик запущен (Europe/Moscow)")
+    await init_db()
+    setup_scheduler(bot)
 
-    try:
-        allowed = list(set(dp.resolve_used_update_types() + ["chat_member"]))
-        await dp.start_polling(bot, allowed_updates=allowed)
-    finally:
-        scheduler.shutdown(wait=False)
-        await bot.session.close()
+    # --- БЛОК ОТЛАДКИ ПРИ СТАРТЕ ---
+    print("Бот успешно запущен и готов к работе!")
+
+    # Выводим состояние базы в консоль
+    dump_db_to_console()
+
+    # Выводим таймер до следующего алерта
+    print(get_time_until_next_notification())
+    print("-" * 70)
+    # -------------------------------
+
+    await dp.start_polling(bot)
+
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("Бот остановлен.")

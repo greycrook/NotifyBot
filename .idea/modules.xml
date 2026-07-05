@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/duty-telegram-bot.iml" filepath="$PROJECT_DIR$/.idea/duty-telegram-bot.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/DutyBot.iml" filepath="$PROJECT_DIR$/.idea/DutyBot.iml" />
     </modules>
   </component>
 </project>
